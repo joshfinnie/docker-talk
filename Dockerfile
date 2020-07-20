@@ -1,8 +1,23 @@
-FROM python:3-alpine
+FROM python:3-slim as base
 
-COPY requirements.txt /requirements.txt
-COPY script.py /script.py
+ENV PYTHONUNBUFFERED=1
 
-RUN pip install -r requirements.txt
+WORKDIR /code
 
-CMD ["python", "./script.py"]
+FROM base as builder
+
+ENV PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.0.9
+
+RUN pip install "poetry==$POETRY_VERSION"
+RUN python -m venv /venv
+
+COPY pyproject.toml poetry.lock ./
+RUN poetry export -f requirements.txt | /venv/bin/pip install -r /dev/stdin
+
+FROM base as final
+
+COPY --from=builder /venv /venv
+COPY . /code
+RUN chmod +x /code/docker-entrypoint.sh
+CMD ["./docker-entrypoint.sh"]
