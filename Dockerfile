@@ -1,8 +1,8 @@
-FROM python:3
+FROM python:3-alpine
 
-ADD requirements.txt /
-ADD script.py /
+COPY requirements.txt /requirements.txt
+COPY script.py /script.py
 
 RUN pip install -r requirements.txt
 
-CMD python ./script.py
+CMD ["python", "./script.py"]
