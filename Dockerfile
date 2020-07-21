@@ -1,24 +1,18 @@
-FROM python:3-slim as base
+FROM golang:1.14 as base
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y wget
 
-ENV PYTHONUNBUFFERED=1
-
-WORKDIR /code
+# Install gorson
+RUN wget https://github.com/pbs/gorson/releases/download/4.2.0/gorson-4.2.0-linux-amd64 && \
+    mv gorson-4.2.0-linux-amd64 /bin/gorson && \
+    chmod +x /bin/gorson
 
 FROM base as builder
+WORKDIR /src/go
+COPY hello.go ./
+RUN CGO_ENABLED=0 go build -a -ldflags '-s' -o hello
 
-ENV PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=1.0.9
-
-RUN pip install "poetry==$POETRY_VERSION"
-RUN python -m venv /venv
-
-COPY pyproject.toml poetry.lock ./
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN poetry export -f requirements.txt | /venv/bin/pip install -r /dev/stdin
-
-FROM base as final
-
-COPY --from=builder /venv /venv
-COPY . /code
-RUN chmod +x /code/docker-entrypoint.sh
-CMD ["./docker-entrypoint.sh"]
+FROM scratch
+COPY --from=builder /src/go/hello /hello
+CMD ["/hello"]
